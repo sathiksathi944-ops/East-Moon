@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community Society App</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; }
+
+/* ---------- Login ---------- */
+.login-container { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+.login-box { background:#fff; padding:36px; border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,.2); width:100%; max-width:420px; }
+.login-box h1 { color:#333; margin-bottom:6px; text-align:center; font-size:26px; }
+.login-subtitle { text-align:center; color:#999; font-size:14px; margin-bottom:24px; }
+
+/* Register corner button */
+.register-corner-btn { position:fixed; top:22px; right:26px; z-index:20; display:flex; align-items:center; gap:6px; padding:9px 18px; background:rgba(255,255,255,.15); backdrop-filter:blur(6px); border:1.5px solid rgba(255,255,255,.7); color:#fff; border-radius:30px; font-size:14px; font-weight:600; cursor:pointer; transition:background .2s,transform .15s; }
+.register-corner-btn:hover { background:rgba(255,255,255,.28); transform:translateY(-1px); }
+.register-corner-icon { font-size:16px; line-height:1; }
+
+/* Register modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(30,20,50,.55); align-items:center; justify-content:center; z-index:50; padding:20px; overflow-y:auto; }
+.modal-overlay.active { display:flex; }
+.modal-box { background:#fff; border-radius:12px; padding:34px; width:100%; max-width:460px; position:relative; box-shadow:0 20px 50px rgba(0,0,0,.3); margin:auto; }
+.modal-box h2 { margin-bottom:6px; color:#333; font-size:22px; }
+.modal-subtitle { color:#999; font-size:13px; margin-bottom:18px; }
+.modal-close { position:absolute; top:14px; right:16px; background:none; border:none; font-size:24px; line-height:1; color:#999; cursor:pointer; }
+.modal-close:hover { color:#555; }
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; margin-bottom:6px; color:#555; font-weight:500; font-size:14px; }
+.form-group input, .form-group select, .form-group textarea { width:100%; padding:11px; border:1px solid #ddd; border-radius:5px; font-size:14px; font-family:inherit; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline:none; border-color:#667eea; box-shadow:0 0 5px rgba(102,126,234,.3); }
+.phone-input-row { display:flex; gap:8px; }
+.phone-input-row select { flex:0 0 128px; min-width:0; }
+.phone-input-row input { flex:1; min-width:0; }
+.btn { width:100%; padding:12px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:#fff; border:none; border-radius:5px; font-size:15px; font-weight:bold; cursor:pointer; transition:transform .15s; }
+.btn:hover { transform:translateY(-2px); }
+.btn:active { transform:translateY(0); }
+.btn:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+.btn-secondary { background:#f0f0f5; color:#555; }
+.btn-small { width:auto; padding:6px 14px; font-size:13px; }
+.btn-danger { background:linear-gradient(135deg,#e74c3c,#c0392b); }
+.btn-success { background:linear-gradient(135deg,#27ae60,#219150); }
+.btn-row { display:flex; gap:8px; }
+.error-message, .info-message, .success-message-inline { font-size:13.5px; margin-top:10px; text-align:center; display:none; padding:10px; border-radius:5px; }
+.error-message { color:#c0392b; background:#fdecea; }
+.info-message { color:#1c5faf; background:#e8f1fb; }
+.success-message-inline { color:#1e7e46; background:#e6f7ec; }
+.generated-id-box { display:none; text-align:center; background:#e6f7ec; border:1px dashed #27ae60; border-radius:8px; padding:16px; margin-top:14px; }
+.generated-id-box .id-value { font-size:22px; font-weight:800; color:#1e7e46; letter-spacing:.5px; margin:6px 0; }
+.hint { font-size:12px; color:#888; margin-top:4px; }
+
+/* Role selector (register modal) */
+.role-toggle { display:flex; gap:8px; margin-bottom:18px; }
+.role-toggle button { flex:1; padding:10px; border:1.5px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; font-size:13.5px; font-weight:600; color:#666; }
+.role-toggle button.active { border-color:#667eea; background:#f0f0fc; color:#667eea; }
+.master-key-box { background:#fff8e6; border:1px dashed #d9a441; border-radius:8px; padding:14px; margin-bottom:16px; }
+.master-key-box .form-group { margin-bottom:0; }
+.form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.section-divider { border:none; border-top:1px solid #eee; margin:20px 0 16px; }
+
+/* Registration step indicator */
+.reg-steps { display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:22px; }
+.reg-step-dot { display:flex; align-items:center; gap:6px; font-size:11.5px; color:#bbb; font-weight:600; }
+.reg-step-dot .num { width:22px; height:22px; border-radius:50%; background:#f0f0f5; color:#999; display:flex; align-items:center; justify-content:center; font-size:11.5px; border:1.5px solid #e2e2ea; transition:all .2s; }
+.reg-step-dot.active .num { background:#667eea; color:#fff; border-color:#667eea; }
+.reg-step-dot.done .num { background:#27ae60; color:#fff; border-color:#27ae60; }
+.reg-step-dot.active, .reg-step-dot.done { color:#555; }
+.reg-step-line { width:22px; height:1.5px; background:#e2e2ea; }
+.reg-step-panel { display:none; }
+.reg-step-panel.active { display:block; }
+.reg-step-back { background:none; border:none; color:#888; font-size:13px; cursor:pointer; margin-bottom:14px; padding:0; display:inline-flex; align-items:center; gap:4px; }
+.reg-step-back:hover { color:#555; }
+.step2-summary { background:#f7f7fb; border-radius:8px; padding:10px 14px; margin-bottom:18px; font-size:13px; color:#777; }
+.step2-summary b { color:#444; }
+.otp-input { letter-spacing:6px; font-size:20px; font-weight:700; text-align:center; }
+.resend-row { display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:12.5px; color:#888; }
+.resend-row button { background:none; border:none; color:#667eea; font-weight:600; cursor:pointer; font-size:12.5px; padding:0; }
+.resend-row button:disabled { color:#bbb; cursor:not-allowed; }
+.verified-phone-note { background:#e6f7ec; color:#1e7e46; border-radius:6px; padding:8px 12px; font-size:12.5px; margin-bottom:14px; display:flex; align-items:center; gap:6px; }
+
+/* Connectivity / offline sync UI */
+.connectivity-bar { padding:0 20px 12px; }
+.connectivity-pill { display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; color:#555; background:#f5f5fa; border-radius:20px; padding:6px 12px; }
+.connectivity-dot { width:8px; height:8px; border-radius:50%; background:#27ae60; flex-shrink:0; }
+.connectivity-pill.offline .connectivity-dot { background:#c0392b; }
+.connectivity-pill.offline { background:#fdecea; color:#a3323f; }
+.sync-now-btn { margin-top:6px; width:100%; padding:7px; font-size:11.5px; background:#fff; border:1px solid #ddd; border-radius:5px; color:#667eea; cursor:pointer; font-weight:600; }
+.sync-now-btn:disabled { color:#bbb; cursor:not-allowed; }
+.sync-error-note { font-size:11px; color:#a3323f; margin-top:6px; line-height:1.4; }
+.sync-error-note button { background:none; border:none; color:#a3323f; text-decoration:underline; font-size:11px; cursor:pointer; padding:0; margin-left:4px; }
+.badge-pending-sync { background:#fff3cd; color:#8a6d1e; }
+.offline-banner { display:none; background:#fdecea; color:#a3323f; font-size:12.5px; padding:9px 14px; border-radius:6px; margin-bottom:16px; }
+.offline-banner.show { display:block; }
+.login-offline-note { text-align:center; color:#a3323f; font-size:12.5px; background:#fdecea; border-radius:6px; padding:9px; margin-top:14px; display:none; }
+.login-offline-note.show { display:block; }
+
+/* ---------- App shell ---------- */
+.app-container { display:none; width:100%; min-height:100vh; background:#f5f5f5; }
+.app-container.active { display:flex; }
+.sidebar { width:250px; background:#fff; box-shadow:2px 0 10px rgba(0,0,0,.1); display:flex; flex-direction:column; padding:20px 0; flex-shrink:0; }
+.sidebar-title { padding:0 20px 20px; font-size:20px; font-weight:700; color:#333; border-bottom:1px solid #eee; margin-bottom:10px; }
+.sidebar-user { padding:0 20px 14px; font-size:13px; color:#888; }
+.sidebar-user b { color:#555; display:block; }
+.role-badge { display:inline-block; margin-top:4px; font-size:11px; padding:2px 8px; border-radius:10px; background:#667eea; color:#fff; }
+.session-expiry-note { padding:0 20px 10px; font-size:11px; color:#aaa; }
+.sidebar-menu { list-style:none; flex:1; }
+.menu-btn { width:100%; text-align:left; padding:12px 20px; background:none; border:none; cursor:pointer; font-size:14.5px; color:#555; border-left:3px solid transparent; }
+.menu-btn:hover { background:#f5f5fa; }
+.menu-btn.active { background:#f0f0fc; color:#667eea; border-left-color:#667eea; font-weight:600; }
+.logout-btn { margin:10px 20px 0; padding:10px; background:#f5f5f5; border:1px solid #ddd; border-radius:5px; cursor:pointer; color:#c0392b; font-weight:600; }
+.main-content { flex:1; padding:30px; overflow-y:auto; }
+.success-message { display:none; position:fixed; top:20px; right:20px; background:#27ae60; color:#fff; padding:14px 22px; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,.2); z-index:999; max-width:340px; }
+.success-message.show { display:block; }
+.section { display:none; }
+.section.active { display:block; }
+.section h2 { margin-bottom:20px; color:#333; }
+.stats-row { display:flex; gap:20px; margin-bottom:24px; flex-wrap:wrap; }
+.stat-card { background:#fff; border-radius:10px; padding:20px 26px; box-shadow:0 2px 8px rgba(0,0,0,.06); flex:1; min-width:140px; }
+.stat-card h3 { font-size:30px; color:#667eea; }
+.stat-card p { color:#888; font-size:13px; margin-top:4px; }
+.list-container { display:flex; flex-direction:column; gap:12px; }
+.card-item { background:#fff; border-radius:8px; padding:16px 18px; box-shadow:0 1px 4px rgba(0,0,0,.06); display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+.card-item .info b { display:block; margin-bottom:3px; color:#333; }
+.card-item .info span { font-size:13px; color:#888; display:block; }
+.badge { display:inline-block; font-size:11px; padding:3px 9px; border-radius:10px; font-weight:600; margin-left:6px; }
+.badge-pending { background:#fff3cd; color:#8a6d1e; }
+.badge-approved { background:#d4edda; color:#1e7e46; }
+.badge-rejected { background:#f8d7da; color:#a3323f; }
+.badge-admin { background:#e0d4fb; color:#5b3ca3; }
+.badge-member { background:#d6eaff; color:#1c5faf; }
+.badge-high { background:#f8d7da; color:#a3323f; }
+.badge-medium { background:#fff3cd; color:#8a6d1e; }
+.badge-low { background:#d4edda; color:#1e7e46; }
+.tabs { display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap; }
+.tab-btn { padding:9px 16px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; font-size:13.5px; color:#555; }
+.tab-btn.active { background:#667eea; color:#fff; border-color:#667eea; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+.empty-state { text-align:center; padding:40px 20px; color:#999; }
+.media-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; }
+.media-card { background:#fff; border-radius:8px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.media-card .name { font-weight:600; color:#333; font-size:14px; margin-bottom:6px; word-break:break-word; }
+.media-card a { color:#667eea; font-size:13px; text-decoration:none; }
+.admin-only { }
+.member-hidden { display:none !important; }
+.spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.5); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; margin-right:6px; vertical-align:-2px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.profile-card { background:#fff; border-radius:10px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.06); max-width:460px; }
+.profile-card dt { font-size:12px; color:#999; margin-top:12px; }
+.profile-card dd { font-size:15px; color:#333; font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<button class="register-corner-btn" id="openRegisterBtn" type="button" title="Register as a new member">
+  <span class="register-corner-icon">＋</span> Register
+</button>
+
+<div class="login-container" id="loginContainer">
+  <div class="login-box">
+    <h1>Community Society</h1>
+    <p class="login-subtitle">Sign in to continue</p>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="loginUsername">Admin Username / Mobile Number</label>
+        <input type="text" id="loginUsername" autocomplete="username" placeholder="Admin username or your mobile number" required>
+      </div>
+      <div class="form-group">
+        <label for="loginPassword" id="loginPasswordLabel">Password</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" placeholder="Password" required>
+      </div>
+      <button type="submit" class="btn" id="loginBtn">Login</button>
+      <div class="error-message" id="loginError"></div>
+      <div class="info-message" id="loginInfo"></div>
+      <div class="login-offline-note" id="loginOfflineNote">You're offline. Connect to the internet to sign in — if you signed in on this device before, it may resume automatically.</div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== REGISTER MODAL ===================== -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal-box">
+    <button class="modal-close" id="closeRegisterBtn" type="button" aria-label="Close">&times;</button>
+    <h2>Create an Account</h2>
+    <p class="modal-subtitle" id="modalSubtitle">Choose the type of account you're registering.</p>
+
+    <!-- Step indicator -->
+    <div class="reg-steps" id="regSteps">
+      <div class="reg-step-dot active" data-step="1"><span class="num">1</span>Details</div>
+      <div class="reg-step-line"></div>
+      <div class="reg-step-dot" data-step="2"><span class="num">2</span>Email</div>
+      <div class="reg-step-line"></div>
+      <div class="reg-step-dot" data-step="3"><span class="num">3</span>Verify</div>
+    </div>
+
+    <!-- ---------- STEP 1: Account type + details ---------- -->
+    <div class="reg-step-panel active" id="regStep1">
+      <div class="role-toggle">
+        <button type="button" id="roleStaffBtn" class="active" data-role="staff">Staff / Member</button>
+        <button type="button" id="roleAdminBtn" data-role="admin">Administrator</button>
+      </div>
+
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="regName">Full Name</label>
+          <input type="text" id="regName" required>
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email Address</label>
+          <input type="email" id="regEmail" required>
+        </div>
+        <div class="form-group">
+          <label for="regPhone">Mobile Number</label>
+          <div class="phone-input-row">
+            <select id="regCountryCode" required>
+              <option value="" disabled selected>Code</option>
+            </select>
+            <input type="tel" id="regPhone" inputmode="numeric" placeholder="e.g. 9876543210" required>
+          </div>
+        </div>
+
+        <!-- Staff/member-only fields -->
+        <div id="staffFields">
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="regDob">Date of Birth</label>
+              <input type="date" id="regDob">
+            </div>
+            <div class="form-group">
+              <label for="regAge">Age</label>
+              <input type="number" id="regAge" min="1" max="120" placeholder="e.g. 32">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="regAddress">Home Address</label>
+            <textarea id="regAddress" rows="2"></textarea>
+          </div>
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="regJob">Current Job</label>
+              <input type="text" id="regJob" placeholder="e.g. Teacher">
+            </div>
+            <div class="form-group">
+              <label for="regMaritalStatus">Marital Status</label>
+              <select id="regMaritalStatus">
+                <option value="" disabled selected>Select</option>
+                <option value="Married">Married</option>
+                <option value="Unmarried">Unmarried</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin-only fields -->
+        <div id="adminFields" style="display:none;">
+          <div class="form-group">
+            <label for="regUsername">Choose a Username</label>
+            <input type="text" id="regUsername" placeholder="letters, numbers, . _ -" autocomplete="username">
+          </div>
+          <div class="master-key-box" id="masterKeyBox">
+            <div class="form-group">
+              <label for="regMasterKey">Special Master Key</label>
+              <input type="password" id="regMasterKey" placeholder="Provided by your organization" autocomplete="off">
+            </div>
+            <p class="hint">Required to create a verified Administrator account. Ask an existing admin if you don't have this.</p>
+          </div>
+        </div>
+
+        <hr class="section-divider">
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="regPassword">Password</label>
+            <input type="password" id="regPassword" autocomplete="new-password" required>
+          </div>
+          <div class="form-group">
+            <label for="regConfirmPassword">Confirm Password</label>
+            <input type="password" id="regConfirmPassword" autocomplete="new-password" required>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:-10px;margin-bottom:16px;">At least 8 characters. Next you'll verify your email address with a one-time code before your account is created.</p>
+
+        <button type="submit" class="btn" id="registerBtn">Continue to Email Verification</button>
+        <div class="error-message" id="regError"></div>
+      </form>
+    </div>
+
+    <!-- ---------- STEP 2: Email verification (send code) ---------- -->
+    <div class="reg-step-panel" id="regStep2">
+      <button type="button" class="reg-step-back" id="step2BackBtn">&larr; Back to details</button>
+      <div class="step2-summary" id="step2Summary"></div>
+      <form id="emailStepForm">
+        <p class="hint" style="margin-bottom:16px;">We'll email a one-time code to <b id="step2EmailDisplay"></b> to confirm it's really you before your account is created.</p>
+        <button type="submit" class="btn" id="sendOtpBtn">Send Verification Code</button>
+        <div class="error-message" id="emailStepError"></div>
+      </form>
+    </div>
+
+    <!-- ---------- STEP 3: OTP verification ---------- -->
+    <div class="reg-step-panel" id="regStep3">
+      <button type="button" class="reg-step-back" id="step3BackBtn">&larr; Change email</button>
+      <p class="modal-subtitle" id="otpSentToText" style="text-align:left;margin-bottom:16px;"></p>
+      <form id="otpStepForm">
+        <div class="form-group">
+          <label for="regOtp">One-Time Code (OTP)</label>
+          <input type="text" id="regOtp" class="otp-input" inputmode="numeric" maxlength="6" placeholder="------" autocomplete="one-time-code" required>
+        </div>
+        <div class="resend-row">
+          <span id="resendCountdownText">Resend available in <b id="resendSeconds">30</b>s</span>
+          <button type="button" id="resendOtpBtn" disabled>Resend OTP</button>
+        </div>
+        <button type="submit" class="btn" id="verifyOtpBtn" style="margin-top:16px;">Verify &amp; Complete Registration</button>
+        <div class="error-message" id="otpStepError"></div>
+      </form>
+    </div>
+
+    <div class="generated-id-box" id="generatedIdBox">
+      <div class="verified-phone-note">✓ Email verified</div>
+      <div id="generatedIdLabel">Your Member ID</div>
+      <div class="id-value" id="generatedIdValue"></div>
+      <div class="hint" id="generatedIdHint">Your registration is <b>pending admin approval</b>. Once approved, come back and log in with your mobile number and password — we'll then email you a one-time code.</div>
+      <button type="button" class="btn btn-secondary" id="backToLoginBtn" style="margin-top:14px;">Back to Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MAIN APP ===================== -->
+<div class="app-container" id="appContainer">
+  <div class="sidebar">
+    <div class="sidebar-title">📱 Community</div>
+    <div class="sidebar-user">
+      <b id="sidebarUserName">-</b>
+      <span class="role-badge" id="sidebarRoleBadge">-</span>
+    </div>
+    <div class="session-expiry-note" id="sessionExpiryNote"></div>
+    <div class="connectivity-bar">
+      <div class="connectivity-pill" id="connectivityPill">
+        <span class="connectivity-dot"></span><span id="connectivityText">Online</span>
+      </div>
+      <button class="sync-now-btn" id="syncNowBtn" type="button" style="display:none;">Sync Now</button>
+      <div class="sync-error-note" id="syncErrorNote" style="display:none;"></div>
+    </div>
+    <ul class="sidebar-menu">
+      <li><button class="menu-btn active" data-section="dashboard">Dashboard</button></li>
+      <li><button class="menu-btn admin-only" data-section="members">Members</button></li>
+      <li><button class="menu-btn" data-section="events">Events</button></li>
+      <li><button class="menu-btn" data-section="announcements">Announcements</button></li>
+      <li><button class="menu-btn" data-section="media">Media Library</button></li>
+      <li><button class="menu-btn member-only" data-section="profile">My Profile</button></li>
+    </ul>
+    <button class="logout-btn" id="logoutBtn">Logout</button>
+  </div>
+
+  <div class="main-content">
+    <div class="success-message" id="successMessage"></div>
+    <div class="offline-banner" id="offlineBanner">You're offline — showing the last data saved on this device. New actions will be saved locally and synced automatically once you're back online.</div>
+
+    <!-- Dashboard -->
+    <section class="section active" id="dashboard">
+      <h2>Dashboard</h2>
+      <div class="stats-row">
+        <div class="stat-card admin-only"><h3 id="memberCount">0</h3><p>Total Members</p></div>
+        <div class="stat-card admin-only"><h3 id="pendingCount">0</h3><p>Pending Approvals</p></div>
+        <div class="stat-card"><h3 id="eventCount">0</h3><p>Events</p></div>
+        <div class="stat-card"><h3 id="announcementCount">0</h3><p>Announcements</p></div>
+      </div>
+      <h3 style="margin-bottom:12px;color:#555;">Recent Announcements</h3>
+      <div class="list-container" id="recentAnnouncements"></div>
+    </section>
+
+    <!-- Members (admin only) -->
+    <section class="section admin-only" id="members">
+      <h2>Members</h2>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="pendingApprovals">Pending Approvals</button>
+        <button class="tab-btn" data-tab="allMembers">All Members</button>
+      </div>
+      <div class="tab-content active" id="pendingApprovals">
+        <div class="list-container" id="pendingApprovals-content"></div>
+      </div>
+      <div class="tab-content" id="allMembers">
+        <div class="list-container" id="allMembers-content"></div>
+      </div>
+    </section>
+
+    <!-- Events -->
+    <section class="section" id="events">
+      <h2>Events</h2>
+      <div class="tabs admin-only">
+        <button class="tab-btn active" data-tab="eventsList">All Events</button>
+        <button class="tab-btn" data-tab="addEvent">+ Add Event</button>
+      </div>
+      <div class="tab-content active" id="eventsList">
+        <div class="list-container" id="eventsList-content"></div>
+      </div>
+      <div class="tab-content admin-only" id="addEvent">
+        <form id="addEventForm">
+          <div class="form-group"><label>Event Name</label><input type="text" id="eventName" required></div>
+          <div class="form-group"><label>Date</label><input type="date" id="eventDate" required></div>
+          <div class="form-group"><label>Time</label><input type="time" id="eventTime" required></div>
+          <div class="form-group"><label>Location</label><input type="text" id="eventLocation" required></div>
+          <div class="form-group"><label>Description</label><textarea id="eventDescription" rows="3" required></textarea></div>
+          <button type="submit" class="btn">Create Event</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Announcements -->
+    <section class="section" id="announcements">
+      <h2>Announcements</h2>
+      <div class="tabs admin-only">
+        <button class="tab-btn active" data-tab="announcementsList">All Announcements</button>
+        <button class="tab-btn" data-tab="addAnnouncement">+ Add Announcement</button>
+      </div>
+      <div class="tab-content active" id="announcementsList">
+        <div class="list-container" id="announcementsList-content"></div>
+      </div>
+      <div class="tab-content admin-only" id="addAnnouncement">
+        <form id="addAnnouncementForm">
+          <div class="form-group"><label>Title</label><input type="text" id="announcementTitle" required></div>
+          <div class="form-group"><label>Content</label><textarea id="announcementContent" rows="3" required></textarea></div>
+          <div class="form-group">
+            <label>Priority</label>
+            <select id="announcementPriority" required>
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <button type="submit" class="btn">Post Announcement</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Media -->
+    <section class="section" id="media">
+      <h2>Media Library</h2>
+      <div class="tabs admin-only">
+        <button class="tab-btn active" data-tab="mediaList">Files</button>
+        <button class="tab-btn" data-tab="uploadMedia">+ Upload</button>
+      </div>
+      <div class="tab-content active" id="mediaList">
+        <div class="media-grid" id="mediaList-content"></div>
+      </div>
+      <div class="tab-content admin-only" id="uploadMedia">
+        <form id="uploadForm">
+          <div class="form-group"><label>File</label><input type="file" id="fileInput" required></div>
+          <div class="form-group">
+            <label>Visibility</label>
+            <select id="fileVisibility">
+              <option value="members">All Approved Members</option>
+              <option value="admin">Admin Only</option>
+            </select>
+          </div>
+          <button type="submit" class="btn" id="uploadBtn">Upload to Drive</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Profile (member only) -->
+    <section class="section" id="profile">
+      <h2>My Profile</h2>
+      <div class="profile-card">
+        <dt>Member ID</dt><dd id="profileId">-</dd>
+        <dt>Name</dt><dd id="profileName">-</dd>
+        <dt>Email</dt><dd id="profileEmail">-</dd>
+        <dt>Phone</dt><dd id="profilePhone">-</dd>
+        <dt>Date of Birth</dt><dd id="profileDob">-</dd>
+        <dt>Age</dt><dd id="profileAge">-</dd>
+        <dt>Home Address</dt><dd id="profileAddress">-</dd>
+        <dt>Current Job</dt><dd id="profileJob">-</dd>
+        <dt>Marital Status</dt><dd id="profileMaritalStatus">-</dd>
+        <dt>Status</dt><dd id="profileStatus">-</dd>
+        <dt>Member Since</dt><dd id="profileJoinDate">-</dd>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   CONFIGURATION
+   Replace GOOGLE_APPS_SCRIPT_URL with your deployed Web App URL.
+   API_KEY must match the API_KEY Script Property in the Apps Script project.
+   NOTE: this API_KEY is visible to anyone who views this page's source. It
+   stops casual/accidental misuse of the endpoint, not a determined attacker.
+   Real access control (who can approve members, upload files, who can see
+   which file, session expiry, etc.) is enforced on the server using
+   session tokens - see Code.gs. The Special Master Key for creating admin
+   accounts is NEVER stored or checked here - it is sent once at
+   registration time and verified only on the server.
+
+   Registration now requires EMAIL verification before an account is
+   ever written to the database (staff AND admin). Phone OTP has been
+   removed entirely - the mobile number is still collected (staff use
+   it to log in) but is no longer itself verified via OTP. This means
+   Code.gs needs two additional actions on top of the existing ones:
+     - sendRegistrationOtp({ email, purpose }) -> { success:true }
+         Generates + emails a fresh OTP tied to (email, purpose)
+         with its own short expiry (e.g. 5 min) and a resend cooldown.
+     - verifyRegistrationOtp({ email, otp, purpose }) -> { success:true, emailVerifyToken }
+         Checks the OTP, and on success issues a short-lived signed
+         token proving that email was verified for that purpose.
+   registerMember / registerAdmin must now also accept and validate
+   emailVerifyToken (rejecting the call if it's missing, expired, or
+   doesn't match the email/purpose) before creating the record - the
+   client can never be trusted to assert "the email was verified" on
+   its own.
+   ========================================================================= */
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
+const API_KEY = 'REPLACE_WITH_SAME_KEY_AS_SCRIPT_PROPERTY';
+
+let session = { role: null, token: null, memberId: null, name: null, expiresAt: null };
+let appData = { members: [], events: [], announcements: [], files: [] };
+let sessionTimer = null;
+
+/* =========================================================================
+   OFFLINE STORAGE LAYER (IndexedDB)
+   Two object stores:
+   - 'cache'  : key/value mirror of server data so the app has something to
+                show instantly and while offline (appData, session, a
+                registration draft in progress).
+   - 'outbox' : a durable queue of mutating actions that couldn't reach the
+                server. Each entry is replayed in order once connectivity
+                returns. This is what makes registration, events,
+                announcements, member actions, and file uploads all safe
+                to perform offline.
+   ========================================================================= */
+const IDB_NAME = 'communityAppOfflineDB';
+const IDB_VERSION = 1;
+let idbInstance = null;
+
+function idbOpen() {
+  if (idbInstance) return Promise.resolve(idbInstance);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('cache')) db.createObjectStore('cache', { keyPath: 'key' });
+      if (!db.objectStoreNames.contains('outbox')) db.createObjectStore('outbox', { keyPath: 'localId' });
+    };
+    req.onsuccess = () => { idbInstance = req.result; resolve(idbInstance); };
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbPut(store, value) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(value);
+    tx.oncomplete = () => resolve(value);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbGet(store, key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbGetAll(store) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbDelete(store, key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+function saveCache(key, value) { return idbPut('cache', { key, value }); }
+async function loadCache(key) { const r = await idbGet('cache', key); return r ? r.value : null; }
+
+function makeLocalId() { return 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9); }
+
+/* ---------------- Connectivity tracking ----------------
+   navigator.onLine / online-offline events give us fast UI feedback, but
+   WebViews can report it unreliably, so the real source of truth is
+   simply whether the last fetch to the server actually succeeded -
+   callApi() below updates isOnline based on that too. */
+let isOnline = navigator.onLine;
+let syncInProgress = false;
+
+function setOnlineState(online) {
+  const changed = isOnline !== online;
+  isOnline = online;
+  updateConnectivityUI();
+  if (online && changed) syncOutbox();
+}
+window.addEventListener('online', () => setOnlineState(true));
+window.addEventListener('offline', () => setOnlineState(false));
+// Periodic gentle retry in case the online/offline events don't fire
+// reliably inside the WebView wrapper.
+setInterval(() => { if (navigator.onLine && !syncInProgress) syncOutbox(); }, 30000);
+
+async function updateConnectivityUI() {
+  const pill = document.getElementById('connectivityPill');
+  const text = document.getElementById('connectivityText');
+  const syncBtn = document.getElementById('syncNowBtn');
+  const banner = document.getElementById('offlineBanner');
+  const loginNote = document.getElementById('loginOfflineNote');
+  const errorNote = document.getElementById('syncErrorNote');
+  const outbox = await idbGetAll('outbox').catch(() => []);
+  const pending = outbox.length;
+  const failed = outbox.filter(o => o.lastError);
+
+  pill.classList.toggle('offline', !isOnline);
+  text.textContent = isOnline ? (pending ? ('Online · syncing ' + pending) : 'Online') : ('Offline · ' + pending + ' pending');
+  syncBtn.style.display = pending ? 'block' : 'none';
+  syncBtn.disabled = !isOnline || syncInProgress;
+  banner.classList.toggle('show', !isOnline && !!session.token);
+  loginNote.classList.toggle('show', !isOnline && !session.token);
+
+  if (failed.length) {
+    errorNote.style.display = 'block';
+    errorNote.innerHTML = failed.length + ' item(s) couldn\'t sync (' + escapeHtml(failed[0].lastError) + ').' +
+      '<button type="button" onclick="discardFailedOutboxItems()">Discard failed</button>';
+  } else {
+    errorNote.style.display = 'none';
+  }
+}
+async function discardFailedOutboxItems() {
+  if (!confirm('Discard the item(s) that failed to sync? This cannot be undone.')) return;
+  const outbox = await idbGetAll('outbox');
+  for (const item of outbox) { if (item.lastError) await idbDelete('outbox', item.localId); }
+  updateConnectivityUI();
+}
+document.getElementById('syncNowBtn').addEventListener('click', () => syncOutbox());
+
+/* ---------------- Outbox queue ---------------- */
+async function queueAction(action, payload, meta) {
+  const item = { localId: makeLocalId(), action, payload, meta: meta || {}, createdAt: Date.now(), attempts: 0, lastError: null };
+  await idbPut('outbox', item);
+  updateConnectivityUI();
+  return item;
+}
+
+async function syncOutbox() {
+  if (syncInProgress) return;
+  syncInProgress = true;
+  updateConnectivityUI();
+  try {
+    let queue = await idbGetAll('outbox');
+    queue.sort((a, b) => a.createdAt - b.createdAt);
+    for (const item of queue) {
+      try {
+        await rawApiCall(item.action, item.payload);
+        await idbDelete('outbox', item.localId);
+        setOnlineState(true);
+        if (item.meta && item.meta.successMessage) showSuccess(item.meta.successMessage);
+      } catch (err) {
+        if (err.isNetworkError) {
+          // Lost connection mid-sync - stop for now, the interval/online
+          // listener will retry later. Keep remaining items queued.
+          setOnlineState(false);
+          break;
+        } else {
+          // Server rejected it (e.g. duplicate email/phone) - this will
+          // never succeed by retrying, so keep it visible but stop
+          // silently retrying it every cycle.
+          item.attempts++;
+          item.lastError = err.message;
+          await idbPut('outbox', item);
+        }
+      }
+    }
+    if (session.token) await loadData({ silent: true });
+  } finally {
+    syncInProgress = false;
+    updateConnectivityUI();
+  }
+}
+
+/* ---------------- API helper ----------------
+   Sent as text/plain to avoid a CORS preflight request, which
+   Apps Script web apps do not handle. Code.gs reads e.postData.contents
+   and JSON.parses it manually.
+
+   rawApiCall() always hits the network - it's what the sync engine uses
+   to replay queued actions. callApi() is the one the UI calls: it tries
+   the network first, and for actions marked "queueable" it will fall
+   back to saving the action offline instead of throwing, so the caller
+   can still show a normal success state. */
+async function rawApiCall(action, payload) {
+  const body = Object.assign({ action, apiKey: API_KEY, token: session.token }, payload || {});
+  let res;
+  try {
+    res = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+  } catch (networkErr) {
+    const e = new Error('You appear to be offline.');
+    e.isNetworkError = true;
+    throw e;
+  }
+  if (!res.ok) {
+    const e = new Error('Network error (' + res.status + ')');
+    e.isNetworkError = true;
+    throw e;
+  }
+  const json = await res.json();
+  if (!json.success) {
+    if (json.sessionExpired) forceLogout('Your session expired. Please sign in again.');
+    const e = new Error(json.message || 'Request failed');
+    e.isNetworkError = false;
+    throw e;
+  }
+  setOnlineState(true);
+  return json;
+}
+
+// Actions that make sense to save locally and replay later. Anything
+// involving live OTP delivery/verification or login is intentionally
+// excluded - those need a real, immediate round trip to the server.
+const QUEUEABLE_ACTIONS = new Set([
+  'registerMember', 'registerAdmin', 'addEvent', 'deleteEvent',
+  'addAnnouncement', 'deleteAnnouncement', 'updateMemberStatus',
+  'updateMemberRole', 'deleteMember', 'uploadFile'
+]);
+
+async function callApi(action, payload, opts) {
+  opts = opts || {};
+  try {
+    return await rawApiCall(action, payload);
+  } catch (err) {
+    if (err.isNetworkError) {
+      setOnlineState(false);
+      if (QUEUEABLE_ACTIONS.has(action) && opts.allowQueue !== false) {
+        await queueAction(action, payload, opts.meta);
+        const queuedErr = new Error('offline-queued');
+        queuedErr.queued = true;
+        throw queuedErr;
+      }
+    }
+    throw err;
+  }
+}
+
+
+function setBusy(btn, busy, label) {
+  if (!btn) return;
+  btn.disabled = busy;
+  btn.dataset.label = btn.dataset.label || btn.textContent;
+  btn.innerHTML = busy ? '<span class="spinner"></span>' + (label || 'Please wait...') : btn.dataset.label;
+}
+
+function showBox(el, text) { el.textContent = text; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 4000); }
+function showSuccess(message) {
+  const el = document.getElementById('successMessage');
+  el.textContent = message;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+/* ---------------- Unified login ----------------
+   One username/password form handles both roles:
+   - looks like a phone number  -> member flow: password is checked first,
+     then an OTP is emailed and must be entered as a second step (the
+     password field doubles as the OTP field once a code has been sent)
+   - anything else              -> admin username/password flow          */
+const PHONE_PATTERN = /^\+?\d{7,15}$/;
+let otpSentForPhone = null;
+let otpPasswordCache = null;
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  const usernameField = document.getElementById('loginUsername');
+  const passwordField = document.getElementById('loginPassword');
+  const username = usernameField.value.trim();
+  const password = passwordField.value;
+  const errorEl = document.getElementById('loginError');
+  const infoEl = document.getElementById('loginInfo');
+
+  if (PHONE_PATTERN.test(username)) {
+    // Member flow
+    if (otpSentForPhone !== username) {
+      // Step 1: verify phone + password, then request the OTP
+      setBusy(btn, true, 'Verifying...');
+      try {
+        await callApi('requestOtp', { phone: username, password: password });
+        otpSentForPhone = username;
+        otpPasswordCache = password;
+        document.getElementById('loginPasswordLabel').textContent = 'One-Time Code (OTP)';
+        passwordField.placeholder = 'Enter the 6-digit code emailed to you';
+        passwordField.value = '';
+        passwordField.focus();
+        btn.dataset.label = 'Verify & Login';
+        showBox(infoEl, 'OTP sent to the email on file for this number. Enter it above and click Login again.');
+      } catch (err) {
+        showBox(errorEl, err.message);
+      } finally {
+        setBusy(btn, false);
+      }
+    } else {
+      // Step 2: verify the OTP (password was already confirmed in step 1)
+      setBusy(btn, true, 'Verifying...');
+      try {
+        const res = await callApi('verifyOtp', { phone: username, otp: password });
+        startSession('member', res.token, res.expiresAt, res.member.memberId, res.member.name);
+        resetLoginForm();
+        enterApp();
+      } catch (err) {
+        showBox(errorEl, err.message);
+      } finally {
+        setBusy(btn, false);
+      }
+    }
+  } else {
+    // Admin flow
+    setBusy(btn, true, 'Signing in...');
+    try {
+      const res = await callApi('adminLogin', { username, password });
+      startSession('admin', res.token, res.expiresAt, null, res.name || username);
+      resetLoginForm();
+      enterApp();
+    } catch (err) {
+      showBox(errorEl, err.message || 'Invalid username or password');
+    } finally {
+      setBusy(btn, false);
+    }
+  }
+});
+
+function resetLoginForm() {
+  document.getElementById('loginForm').reset();
+  document.getElementById('loginPasswordLabel').textContent = 'Password';
+  document.getElementById('loginPassword').placeholder = 'Password';
+  document.getElementById('loginBtn').dataset.label = 'Login';
+  otpSentForPhone = null;
+  otpPasswordCache = null;
+}
+
+/* ---------------- Session lifecycle / auto-logout ----------------
+   Two independent layers of automated logout:
+   1. Absolute expiry - the server is the source of truth (every API
+      call is re-checked there); sessionTimer just makes an idle tab log
+      itself out right on schedule instead of waiting for the next click.
+   2. Idle timeout - if there's no user activity (click/keypress/scroll/
+      touch) for IDLE_TIMEOUT_MS, the session is force-ended even if the
+      absolute expiry hasn't been reached yet. Either path always returns
+      to the login screen, which re-requires the full credential flow
+      (password for admins; password + a freshly emailed OTP for
+      members) - there is no way back into the app without that
+      re-verification. */
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes of inactivity
+let idleTimer = null;
+
+function startSession(role, token, expiresAt, memberId, name) {
+  session = { role, token, memberId, name, expiresAt };
+  saveCache('session', session);
+  if (sessionTimer) clearTimeout(sessionTimer);
+  const msLeft = expiresAt - Date.now();
+  if (msLeft > 0) {
+    sessionTimer = setTimeout(() => forceLogout('Your session expired. Please sign in again.'), msLeft);
+  }
+  resetIdleTimer();
+  ['click', 'keydown', 'mousemove', 'touchstart', 'scroll'].forEach(evt =>
+    document.addEventListener(evt, resetIdleTimer, { passive: true }));
+}
+
+function resetIdleTimer() {
+  if (!session.token) return;
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => forceLogout('You were logged out after 15 minutes of inactivity. Please sign in again.'), IDLE_TIMEOUT_MS);
+}
+
+function forceLogout(message) {
+  if (sessionTimer) { clearTimeout(sessionTimer); sessionTimer = null; }
+  if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+  ['click', 'keydown', 'mousemove', 'touchstart', 'scroll'].forEach(evt =>
+    document.removeEventListener(evt, resetIdleTimer));
+  session = { role: null, token: null, memberId: null, name: null, expiresAt: null };
+  idbDelete('cache', 'session');
+  document.getElementById('appContainer').classList.remove('active');
+  document.getElementById('loginContainer').style.display = 'flex';
+  document.getElementById('openRegisterBtn').style.display = 'flex';
+  resetLoginForm();
+  if (message) showBox(document.getElementById('loginInfo'), message);
+  updateConnectivityUI();
+}
+
+/* ---------------- Country codes ---------------- */
+const COUNTRY_CODES = [
+  {code:'+93',country:'Afghanistan'},{code:'+355',country:'Albania'},{code:'+213',country:'Algeria'},
+  {code:'+54',country:'Argentina'},{code:'+61',country:'Australia'},{code:'+43',country:'Austria'},
+  {code:'+880',country:'Bangladesh'},{code:'+32',country:'Belgium'},{code:'+55',country:'Brazil'},
+  {code:'+673',country:'Brunei'},{code:'+1',country:'Canada / USA'},{code:'+56',country:'Chile'},
+  {code:'+86',country:'China'},{code:'+57',country:'Colombia'},{code:'+20',country:'Egypt'},
+  {code:'+358',country:'Finland'},{code:'+33',country:'France'},{code:'+49',country:'Germany'},
+  {code:'+233',country:'Ghana'},{code:'+30',country:'Greece'},{code:'+852',country:'Hong Kong'},
+  {code:'+91',country:'India'},{code:'+62',country:'Indonesia'},{code:'+98',country:'Iran'},
+  {code:'+964',country:'Iraq'},{code:'+353',country:'Ireland'},{code:'+972',country:'Israel'},
+  {code:'+39',country:'Italy'},{code:'+81',country:'Japan'},{code:'+962',country:'Jordan'},
+  {code:'+254',country:'Kenya'},{code:'+965',country:'Kuwait'},{code:'+60',country:'Malaysia'},
+  {code:'+52',country:'Mexico'},{code:'+212',country:'Morocco'},{code:'+977',country:'Nepal'},
+  {code:'+31',country:'Netherlands'},{code:'+64',country:'New Zealand'},{code:'+234',country:'Nigeria'},
+  {code:'+47',country:'Norway'},{code:'+92',country:'Pakistan'},{code:'+63',country:'Philippines'},
+  {code:'+48',country:'Poland'},{code:'+351',country:'Portugal'},{code:'+974',country:'Qatar'},
+  {code:'+40',country:'Romania'},{code:'+7',country:'Russia'},{code:'+966',country:'Saudi Arabia'},
+  {code:'+65',country:'Singapore'},{code:'+27',country:'South Africa'},{code:'+82',country:'South Korea'},
+  {code:'+34',country:'Spain'},{code:'+94',country:'Sri Lanka'},{code:'+46',country:'Sweden'},
+  {code:'+41',country:'Switzerland'},{code:'+886',country:'Taiwan'},{code:'+66',country:'Thailand'},
+  {code:'+90',country:'Turkey'},{code:'+256',country:'Uganda'},{code:'+971',country:'UAE'},
+  {code:'+44',country:'United Kingdom'},{code:'+998',country:'Uzbekistan'},{code:'+84',country:'Vietnam'}
+];
+(function populateCountryCodes() {
+  const select = document.getElementById('regCountryCode');
+  COUNTRY_CODES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.code;
+    opt.textContent = c.code + ' ' + c.country;
+    select.appendChild(opt);
+  });
+})();
+
+/* ---------------- Register modal ---------------- */
+const registerModal = document.getElementById('registerModal');
+let selectedRegRole = 'staff';
+
+function setRegRole(role) {
+  selectedRegRole = role;
+  document.getElementById('roleStaffBtn').classList.toggle('active', role === 'staff');
+  document.getElementById('roleAdminBtn').classList.toggle('active', role === 'admin');
+  document.getElementById('staffFields').style.display = role === 'staff' ? '' : 'none';
+  document.getElementById('adminFields').style.display = role === 'admin' ? '' : 'none';
+
+  // required attributes must follow which fields are actually shown
+  const staffRequired = ['regDob','regAddress','regJob','regMaritalStatus'];
+  staffRequired.forEach(id => document.getElementById(id).required = (role === 'staff'));
+  document.getElementById('regAge').required = (role === 'staff');
+  document.getElementById('regUsername').required = (role === 'admin');
+  document.getElementById('regMasterKey').required = (role === 'admin');
+}
+document.getElementById('roleStaffBtn').addEventListener('click', () => setRegRole('staff'));
+document.getElementById('roleAdminBtn').addEventListener('click', () => setRegRole('admin'));
+
+/* ---------------- Registration step navigation ----------------
+   Step 1 (details, including the mobile number as a plain field) is
+   collected locally only - nothing is sent to the server yet. Step 2
+   sends a one-time code to the entered email address. Step 3 verifies
+   that OTP; only once it is confirmed do we actually call
+   registerMember / registerAdmin and write the account to the
+   database. This guarantees every account (staff AND admin) is bound
+   to a verified, reachable email address before it ever gets saved.
+   Phone number OTP verification has been removed - the mobile number
+   is still collected (staff use it to log in) but is no longer itself
+   verified. */
+let regDetails = null;       // captured at end of step 1 (includes countryCode/localPhone)
+let resendTimer = null;
+let resendSecondsLeft = 0;
+
+/* ---- Email OTP (registration only) ----
+   sendRegistrationOtp({ email, purpose }) emails a fresh one-time code
+   to the address entered in step 1. verifyRegistrationOtp({ email, otp,
+   purpose }) checks it and returns a short-lived signed emailVerifyToken,
+   which is then sent to registerMember/registerAdmin. Code.gs must
+   validate that token (rejecting the call if it's missing, expired, or
+   doesn't match the email/purpose) before creating the record - the
+   client can never be trusted to assert "the email was verified" on
+   its own. Both calls need a live connection and are never queued. */
+
+function goToStep(n) {
+  [1, 2, 3].forEach(i => {
+    document.getElementById('regStep' + i).classList.toggle('active', i === n);
+    const dot = document.querySelector('.reg-step-dot[data-step="' + i + '"]');
+    dot.classList.toggle('active', i === n);
+    dot.classList.toggle('done', i < n);
+  });
+  document.getElementById('regSteps').style.display = '';
+  document.getElementById('modalSubtitle').style.display = n === 1 ? '' : 'none';
+}
+
+function openRegisterModal() {
+  document.getElementById('registerForm').reset();
+  document.getElementById('emailStepForm').reset();
+  document.getElementById('otpStepForm').reset();
+  document.getElementById('generatedIdBox').style.display = 'none';
+  document.getElementById('regError').style.display = 'none';
+  document.getElementById('emailStepError').style.display = 'none';
+  document.getElementById('otpStepError').style.display = 'none';
+  regDetails = null;
+  stopResendCountdown();
+  setRegRole('staff');
+  goToStep(1);
+  registerModal.classList.add('active');
+  offerDraftResume();
+}
+
+async function offerDraftResume() {
+  const draft = await loadCache('regDraft');
+  if (!draft || !draft.regDetails) return;
+  const resume = confirm('You have an unfinished registration for "' + draft.regDetails.name + '" saved on this device. Resume it now?');
+  if (!resume) { await idbDelete('cache', 'regDraft'); return; }
+  regDetails = draft.regDetails;
+  setRegRole(regDetails.role);
+  document.getElementById('regName').value = regDetails.name || '';
+  document.getElementById('regEmail').value = regDetails.email || '';
+  document.getElementById('regCountryCode').value = regDetails.countryCode || '';
+  document.getElementById('regPhone').value = regDetails.localPhone || '';
+  document.getElementById('regPassword').value = regDetails.password || '';
+  document.getElementById('regConfirmPassword').value = regDetails.confirmPassword || '';
+  if (regDetails.role === 'admin') {
+    document.getElementById('regUsername').value = regDetails.username || '';
+    document.getElementById('regMasterKey').value = regDetails.masterKey || '';
+  } else {
+    document.getElementById('regDob').value = regDetails.dob || '';
+    document.getElementById('regAge').value = regDetails.age || '';
+    document.getElementById('regAddress').value = regDetails.address || '';
+    document.getElementById('regJob').value = regDetails.job || '';
+    document.getElementById('regMaritalStatus').value = regDetails.maritalStatus || '';
+  }
+  document.getElementById('step2Summary').innerHTML =
+    'Resuming registration for <b>' + escapeHtml(regDetails.name || '') + '</b>. Verify your email to continue.';
+  document.getElementById('step2EmailDisplay').textContent = regDetails.email || '';
+  goToStep(2);
+}
+function closeRegisterModal() {
+  registerModal.classList.remove('active');
+  stopResendCountdown();
+}
+document.getElementById('openRegisterBtn').addEventListener('click', openRegisterModal);
+document.getElementById('closeRegisterBtn').addEventListener('click', closeRegisterModal);
+document.getElementById('backToLoginBtn').addEventListener('click', closeRegisterModal);
+registerModal.addEventListener('click', (e) => { if (e.target === registerModal) closeRegisterModal(); });
+document.getElementById('step2BackBtn').addEventListener('click', () => goToStep(1));
+document.getElementById('step3BackBtn').addEventListener('click', () => { stopResendCountdown(); goToStep(2); });
+
+/* ---- Step 1: validate + capture details, then move to step 2 ---- */
+document.getElementById('registerForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const errorEl = document.getElementById('regError');
+  const password = document.getElementById('regPassword').value;
+  const confirmPassword = document.getElementById('regConfirmPassword').value;
+
+  if (password.length < 8) { showBox(errorEl, 'Password must be at least 8 characters'); return; }
+  if (password !== confirmPassword) { showBox(errorEl, 'Passwords do not match'); return; }
+
+  const countryCode = document.getElementById('regCountryCode').value;
+  const localNumber = document.getElementById('regPhone').value.trim();
+  const localDigits = localNumber.replace(/\D/g, '');
+  if (!countryCode) { showBox(errorEl, 'Please select a country code'); return; }
+  if (localDigits.length < 6 || localDigits.length > 12) { showBox(errorEl, 'Enter a valid mobile number (without the country code)'); return; }
+
+  if (selectedRegRole === 'admin') {
+    const username = document.getElementById('regUsername').value.trim();
+    const masterKey = document.getElementById('regMasterKey').value;
+    if (!username) { showBox(errorEl, 'Please choose a username'); return; }
+    if (!masterKey) { showBox(errorEl, 'The Special Master Key is required for admin accounts'); return; }
+    regDetails = {
+      role: 'admin',
+      name: document.getElementById('regName').value.trim(),
+      email: document.getElementById('regEmail').value.trim(),
+      countryCode, localPhone: localDigits,
+      username, password, confirmPassword, masterKey
+    };
+  } else {
+    regDetails = {
+      role: 'staff',
+      name: document.getElementById('regName').value.trim(),
+      email: document.getElementById('regEmail').value.trim(),
+      countryCode, localPhone: localDigits,
+      dob: document.getElementById('regDob').value,
+      address: document.getElementById('regAddress').value.trim(),
+      job: document.getElementById('regJob').value.trim(),
+      maritalStatus: document.getElementById('regMaritalStatus').value,
+      age: document.getElementById('regAge').value,
+      password, confirmPassword
+    };
+  }
+
+  document.getElementById('step2Summary').innerHTML =
+    'Creating a <b>' + (selectedRegRole === 'admin' ? 'Administrator' : 'Staff / Member') + '</b> account for <b>' +
+    escapeHtml(regDetails.name || '') + '</b>. Verify your email to continue.';
+  document.getElementById('step2EmailDisplay').textContent = regDetails.email || '';
+  document.getElementById('emailStepError').style.display = 'none';
+  goToStep(2);
+});
+
+/* ---- Step 2: send OTP to the entered email address ---- */
+document.getElementById('emailStepForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('sendOtpBtn');
+  const errorEl = document.getElementById('emailStepError');
+
+  setBusy(btn, true, 'Sending code...');
+  try {
+    await callApi('sendRegistrationOtp', { email: regDetails.email, purpose: regDetails.role + '_register' }, { allowQueue: false });
+    await idbDelete('cache', 'regDraft');
+    document.getElementById('otpSentToText').textContent =
+      'Enter the 6-digit code sent to ' + regDetails.email + '.';
+    document.getElementById('otpStepForm').reset();
+    document.getElementById('otpStepError').style.display = 'none';
+    goToStep(3);
+    startResendCountdown(30);
+    document.getElementById('regOtp').focus();
+  } catch (err) {
+    if (!navigator.onLine) {
+      await saveCache('regDraft', { regDetails });
+      showBox(errorEl, 'You need an internet connection to receive your verification code. Your details are saved on this device — reopen Register once you\'re back online to continue.');
+    } else {
+      showBox(errorEl, err.message || 'Could not send the verification code. Please try again.');
+    }
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+/* ---- Resend OTP with a cooldown ---- */
+function startResendCountdown(seconds) {
+  stopResendCountdown();
+  resendSecondsLeft = seconds;
+  const secEl = document.getElementById('resendSeconds');
+  const textEl = document.getElementById('resendCountdownText');
+  const btn = document.getElementById('resendOtpBtn');
+  btn.disabled = true;
+  textEl.style.display = '';
+  secEl.textContent = resendSecondsLeft;
+  resendTimer = setInterval(() => {
+    resendSecondsLeft--;
+    if (resendSecondsLeft <= 0) {
+      stopResendCountdown();
+      textEl.style.display = 'none';
+      btn.disabled = false;
+    } else {
+      secEl.textContent = resendSecondsLeft;
+    }
+  }, 1000);
+}
+function stopResendCountdown() {
+  if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
+}
+document.getElementById('resendOtpBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('resendOtpBtn');
+  const errorEl = document.getElementById('otpStepError');
+  btn.disabled = true;
+  try {
+    await callApi('sendRegistrationOtp', { email: regDetails.email, purpose: regDetails.role + '_register' }, { allowQueue: false });
+    showBox(document.getElementById('otpStepError'), 'A new code has been sent.');
+    document.getElementById('otpStepError').classList.remove('error-message');
+    document.getElementById('otpStepError').classList.add('info-message');
+    startResendCountdown(30);
+  } catch (err) {
+    document.getElementById('otpStepError').classList.remove('info-message');
+    document.getElementById('otpStepError').classList.add('error-message');
+    showBox(errorEl, err.message || 'Could not resend the code. Please try again.');
+    btn.disabled = false;
+  }
+});
+
+/* ---- Step 3: verify OTP, then finally create the account ---- */
+document.getElementById('otpStepForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('verifyOtpBtn');
+  const errorEl = document.getElementById('otpStepError');
+  const otp = document.getElementById('regOtp').value.trim();
+  if (!/^\d{4,6}$/.test(otp)) { showBox(errorEl, 'Enter the code exactly as sent'); return; }
+
+  setBusy(btn, true, 'Verifying...');
+  try {
+    // The backend confirms the code matches what it emailed for this
+    // (email, purpose) pair. On success it returns a short-lived signed
+    // emailVerifyToken proving email ownership, sent on to
+    // registerMember/registerAdmin. This check needs a live connection -
+    // it can't be queued.
+    let emailVerifyToken;
+    try {
+      const verifyRes = await callApi('verifyRegistrationOtp', { email: regDetails.email, otp, purpose: regDetails.role + '_register' }, { allowQueue: false });
+      emailVerifyToken = verifyRes.emailVerifyToken;
+    } catch (err) {
+      if (!navigator.onLine) {
+        showBox(errorEl, 'You\'re offline — reconnect and try verifying again. Your code entry has not been lost.');
+        return;
+      }
+      throw new Error(err.message || 'Incorrect code. Please try again.');
+    }
+    let pendingSync = false;
+
+    if (regDetails.role === 'admin') {
+      const payload = {
+        name: regDetails.name, email: regDetails.email, username: regDetails.username,
+        password: regDetails.password, confirmPassword: regDetails.confirmPassword,
+        masterKey: regDetails.masterKey,
+        countryCode: regDetails.countryCode, localPhone: regDetails.localPhone,
+        emailVerifyToken
+      };
+      try {
+        await callApi('registerAdmin', payload, { meta: { successMessage: 'Your admin registration has finished syncing and is now active.' } });
+        document.getElementById('generatedIdLabel').textContent = 'Admin Account Created';
+        document.getElementById('generatedIdValue').textContent = '✓ Verified';
+        document.getElementById('generatedIdHint').textContent = 'Your administrator account is active. You can log in now with your username and password.';
+      } catch (err) {
+        if (!err.queued) throw err;
+        pendingSync = true;
+        document.getElementById('generatedIdLabel').textContent = 'Registration Saved on This Device';
+        document.getElementById('generatedIdValue').textContent = '⏳ Pending Sync';
+        document.getElementById('generatedIdHint').textContent = 'Your email was verified, but you\'re offline right now. This will be submitted automatically the moment you\'re back online.';
+      }
+    } else {
+      const payload = {
+        name: regDetails.name, email: regDetails.email, dob: regDetails.dob,
+        address: regDetails.address, job: regDetails.job, maritalStatus: regDetails.maritalStatus,
+        age: regDetails.age, password: regDetails.password, confirmPassword: regDetails.confirmPassword,
+        countryCode: regDetails.countryCode, localPhone: regDetails.localPhone,
+        emailVerifyToken
+      };
+      try {
+        const res = await callApi('registerMember', payload, { meta: { successMessage: 'Your registration has finished syncing and is now pending admin approval.' } });
+        document.getElementById('generatedIdLabel').textContent = 'Your Member ID';
+        document.getElementById('generatedIdValue').textContent = res.memberId;
+        document.getElementById('generatedIdHint').innerHTML = 'Your registration is <b>pending admin approval</b>. Once approved, come back and log in with your mobile number and password — we\'ll then email you a one-time code.';
+      } catch (err) {
+        if (!err.queued) throw err;
+        pendingSync = true;
+        document.getElementById('generatedIdLabel').textContent = 'Registration Saved on This Device';
+        document.getElementById('generatedIdValue').textContent = '⏳ Pending Sync';
+        document.getElementById('generatedIdHint').textContent = 'Your email was verified, but you\'re offline right now. This will be submitted automatically the moment you\'re back online, and you\'ll get your Member ID then.';
+      }
+    }
+    await idbDelete('cache', 'regDraft');
+    stopResendCountdown();
+    document.getElementById('regSteps').style.display = 'none';
+    [1, 2, 3].forEach(i => document.getElementById('regStep' + i).classList.remove('active'));
+    document.getElementById('generatedIdBox').style.display = 'block';
+    updateConnectivityUI();
+  } catch (err) {
+    showBox(errorEl, err.message);
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+/* ---------------- Enter / exit app ---------------- */
+function enterApp() {
+  document.getElementById('loginContainer').style.display = 'none';
+  document.getElementById('openRegisterBtn').style.display = 'none';
+  document.getElementById('appContainer').classList.add('active');
+  document.getElementById('sidebarUserName').textContent = session.name;
+  document.getElementById('sidebarRoleBadge').textContent = session.role === 'admin' ? 'Admin' : 'Member';
+  updateSessionExpiryNote();
+
+  const isAdmin = session.role === 'admin';
+  document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? '' : 'none');
+  document.querySelectorAll('.member-only').forEach(el => el.style.display = isAdmin ? 'none' : '');
+
+  switchSection('dashboard');
+  loadData();
+}
+
+function updateSessionExpiryNote() {
+  const el = document.getElementById('sessionExpiryNote');
+  if (!session.expiresAt) { el.textContent = ''; return; }
+  const days = Math.max(0, Math.round((session.expiresAt - Date.now()) / 86400000));
+  el.textContent = days >= 1 ? ('Session expires in ~' + days + ' day' + (days === 1 ? '' : 's')) : 'Session expires soon';
+}
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  try { await callApi('logout', {}); } catch (e) { /* best-effort */ }
+  forceLogout(null);
+});
+
+/* ---------------- Navigation ---------------- */
+document.querySelectorAll('.menu-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    switchSection(e.target.dataset.section);
+    document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+  });
+});
+function switchSection(sectionId) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(sectionId).classList.add('active');
+}
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const tabId = e.target.dataset.tab;
+    const parent = e.target.closest('.section');
+    parent.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    parent.querySelectorAll('.tab-btn').forEach(tb => tb.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    e.target.classList.add('active');
+  });
+});
+
+/* ---------------- Load data ----------------
+   Cache-first: paint instantly from whatever we last saved locally, then
+   try to refresh from the server. If the network fails, we silently keep
+   showing the cached copy (with the offline banner already visible). */
+async function loadData(opts) {
+  opts = opts || {};
+  const cached = await loadCache('appData');
+  if (cached) {
+    appData = cached;
+    renderAll();
+  }
+  try {
+    const res = await rawApiCall('getDashboard', {});
+    appData.events = res.events || [];
+    appData.announcements = res.announcements || [];
+    appData.files = res.files || [];
+    appData.members = res.members || [];
+    if (session.role === 'member' && res.profile) appData.profile = res.profile;
+    await saveCache('appData', appData);
+    renderAll();
+  } catch (err) {
+    if (!err.isNetworkError && !opts.silent) showSuccess('Could not load data: ' + err.message);
+    // network error while offline: cached render above already covers it
+  }
+  updateConnectivityUI();
+}
+
+function renderAll() {
+  if (session.role === 'member' && appData.profile) renderProfile(appData.profile);
+  loadEvents(); loadAnnouncements(); loadMedia(); loadMembers();
+  updateDashboard();
+}
+
+function pendingSyncBadge(localId) {
+  return localId ? ' <span class="badge badge-pending-sync">Pending sync</span>' : '';
+}
+
+function loadMembers() {
+  if (session.role !== 'admin') return;
+  const pending = appData.members.filter(m => m.status === 'Pending');
+  const pendingEl = document.getElementById('pendingApprovals-content');
+  pendingEl.innerHTML = pending.length ? pending.map(m => `
+    <div class="card-item">
+      <div class="info"><b>${escapeHtml(m.name)}${pendingSyncBadge(m._pendingLocalId)}</b>
+        <span>${escapeHtml(m.memberId)} · ${escapeHtml(m.email)} · ${escapeHtml(m.phone)}</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-success btn-small" onclick="setMemberStatus('${m.memberId}','Approved')">Approve</button>
+        <button class="btn btn-danger btn-small" onclick="setMemberStatus('${m.memberId}','Rejected')">Reject</button>
+      </div>
+    </div>`).join('') : '<div class="empty-state">No pending approvals.</div>';
+
+  const allEl = document.getElementById('allMembers-content');
+  allEl.innerHTML = appData.members.length ? appData.members.map(m => `
+    <div class="card-item">
+      <div class="info"><b>${escapeHtml(m.name)} <span class="badge badge-${m.status.toLowerCase()}">${m.status}</span>${pendingSyncBadge(m._pendingLocalId)}</b>
+        <span>${escapeHtml(m.memberId)} · ${escapeHtml(m.email)} · ${escapeHtml(m.phone)} · Joined ${escapeHtml(m.joinDate)}</span>
+      </div>
+      <div class="btn-row">
+        <select onchange="setMemberRole('${m.memberId}', this.value)" class="btn-small" style="width:auto;">
+          <option value="Member" ${m.role==='Member'?'selected':''}>Member</option>
+          <option value="Moderator" ${m.role==='Moderator'?'selected':''}>Moderator</option>
+        </select>
+        <button class="btn btn-danger btn-small" onclick="deleteMember('${m.memberId}')">Remove</button>
+      </div>
+    </div>`).join('') : '<div class="empty-state">No members yet.</div>';
+}
+
+async function setMemberStatus(memberId, status) {
+  try {
+    await callApi('updateMemberStatus', { memberId, status });
+    showSuccess('Member ' + status.toLowerCase());
+    await loadData();
+  } catch (err) {
+    if (err.queued) {
+      const m = appData.members.find(x => x.memberId === memberId);
+      if (m) { m.status = status; m._pendingLocalId = true; }
+      await saveCache('appData', appData);
+      renderAll();
+      showSuccess('Offline — change saved and will sync automatically.');
+    } else {
+      showSuccess('Error: ' + err.message);
+    }
+  }
+}
+async function setMemberRole(memberId, role) {
+  try {
+    await callApi('updateMemberRole', { memberId, role });
+    showSuccess('Role updated');
+    await loadData();
+  } catch (err) {
+    if (err.queued) {
+      const m = appData.members.find(x => x.memberId === memberId);
+      if (m) { m.role = role; m._pendingLocalId = true; }
+      await saveCache('appData', appData);
+      renderAll();
+      showSuccess('Offline — change saved and will sync automatically.');
+    } else {
+      showSuccess('Error: ' + err.message);
+    }
+  }
+}
+async function deleteMember(memberId) {
+  if (!confirm('Remove this member?')) return;
+  try {
+    await callApi('deleteMember', { memberId });
+    showSuccess('Member removed');
+    await loadData();
+  } catch (err) {
+    if (err.queued) {
+      appData.members = appData.members.filter(x => x.memberId !== memberId);
+      await saveCache('appData', appData);
+      renderAll();
+      showSuccess('Offline — removal saved and will sync automatically.');
+    } else {
+      showSuccess('Error: ' + err.message);
+    }
+  }
+}
+
+function loadEvents() {
+  const el = document.getElementById('eventsList-content');
+  el.innerHTML = appData.events.length ? appData.events.map(ev => `
+    <div class="card-item">
+      <div class="info"><b>${escapeHtml(ev.name)}${pendingSyncBadge(ev._localId)}</b>
+        <span>${escapeHtml(ev.date)} at ${escapeHtml(ev.time)} · ${escapeHtml(ev.location)}</span>
+        <span>${escapeHtml(ev.description)}</span>
+      </div>
+      <div class="btn-row admin-only" style="display:${session.role==='admin'?'flex':'none'}">
+        <button class="btn btn-danger btn-small" onclick="deleteEvent('${ev.id}')">Delete</button>
+      </div>
+    </div>`).join('') : '<div class="empty-state">No events yet.</div>';
+}
+document.getElementById('addEventForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    name: document.getElementById('eventName').value,
+    date: document.getElementById('eventDate').value,
+    time: document.getElementById('eventTime').value,
+    location: document.getElementById('eventLocation').value,
+    description: document.getElementById('eventDescription').value
+  };
+  try {
+    await callApi('addEvent', payload);
+    document.getElementById('addEventForm').reset();
+    showSuccess('Event created');
+    await loadData();
+  } catch (err) {
+    if (err.queued) {
+      document.getElementById('addEventForm').reset();
+      appData.events.push(Object.assign({ id: makeLocalId(), _localId: true }, payload));
+      await saveCache('appData', appData);
+      renderAll();
+      showSuccess('Offline — event saved locally and will sync automatically.');
+    } else {
+      showSuccess('Error: ' + err.message);
+    }
+  }
+});
+async function deleteEvent(id) {
+  if (!confirm('Delete this event?')) return;
+  try {
+    await callApi('deleteEvent', { id });
+    showSuccess('Event deleted');
+    await loadData();
+  } catch (err) {
+    if (err.queued) {
+      appData.events = appData.events.filter(ev => ev.id !== id);
+      await saveCache('appData', appData);
+      renderAll();
+      showSuccess('Offline — deletion saved and will sync automatically.');
+    } else {
+      showSuccess('Error: ' + err.message);
+    }
+  }
+}
+
+function loadAnnouncements() {
+  const el = document.getElementById('announcementsList-content');
+  el.innerHTML = appData.announcements.length ? appData.announcements.map(a => `
+    <div class="card-item">
+      <div class="info"><b>${escapeHtml(a.title)} <span class="badge badge-${a.priority}">${a.priority}</span>${pendingSyncBadge(a._localId)}</b>
+        <span>${escapeHtml(a.content)}</span>
+        <span>By ${escapeHtml(a.author)} on ${escapeHtml(a.date)}</span>
+      </div>
+      <div class="btn-row" style="display:${session.role==='admin'?'flex':'none'}">
+        <button class="btn btn-danger btn-small" onclick="deleteAnnouncement('${a.id}')">Delete</button>
+      </div>
+    </div>`).join('') : '<div class="empty-state">No announcements yet.</div>';
+
+  const recent = document.getElementById('recentAnnouncements');
+  const top = appData.announcements.slice(-5).reverse();
+  recent.innerHTML = top.length ? top.map(a => `
+    <div class="card-item"><div class="info"><b>${escapeHtml(a.title)} <span class="badge badge-${a.priority}">${a.priority}</span>${pendingSyncBadge(a._localId)}</b>
+    <span>${escapeHtml(a.content)}</span></div></div>`).join('') : '<div class="empty-state">Nothing posted yet.</div>';
+}
+document.getElementById('addAnnouncementForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    title: document.getElementById('announcementTitle').value,
+    content: document.getElementById('announcementContent').value,
+    priority: document.getElementById('announcementPriority').value
+  };
+  try {
+    await callApi('addAnnouncement', payload);
+    document.getElementById('addAnnouncementForm').reset();
+    showSuccess('Announcement posted');
+    await loadData();
+  } catch (err) {
+    if (err.queued) {
+      document.getElementById('addAnnouncementForm').reset();
+      appData.announcements.push(Object.assign({ id: makeLocalId(), _localId: true, author: session.name, date: new Date().toISOString().slice(0, 10) }, payload));
+      await saveCache('appData', appData);
+      renderAll();
+      showSuccess('Offline — announcement saved locally and will sync automatically.');
+    } else {
+      showSuccess('Error: ' + err.message);
+    }
+  }
+});
+async function deleteAnnouncement(id) {
+  if (!confirm('Delete this announcement?')) return;
+  try {
+    await callApi('deleteAnnouncement', { id });
+    showSuccess('Announcement deleted');
+    await loadData();
+  } catch (err) {
+    if (err.queued) {
+      appData.announcements = appData.announcements.filter(a => a.id !== id);
+      await saveCache('appData', appData);
+      renderAll();
+      showSuccess('Offline — deletion saved and will sync automatically.');
+    } else {
+      showSuccess('Error: ' + err.message);
+    }
+  }
+}
+
+function loadMedia() {
+  const el = document.getElementById('mediaList-content');
+  // Files are served only through the token-checked download endpoint -
+  // the token is appended client-side and never persisted server-side
+  // alongside the file record.
+  el.innerHTML = appData.files.length ? appData.files.map(f => `
+    <div class="media-card">
+      <div class="name">${escapeHtml(f.fileName)}${pendingSyncBadge(f._localId)}</div>
+      <span class="badge ${f.visibility==='admin'?'badge-admin':'badge-member'}">${f.visibility==='admin'?'Admin only':'Members'}</span>
+      ${f._localId ? '<div style="margin-top:8px;font-size:12px;color:#999;">Stored on this device — will upload to Drive once online.</div>' : `<div style="margin-top:8px;"><a href="${f.url}&token=${encodeURIComponent(session.token)}" target="_blank" rel="noopener">Open file →</a></div>`}
+    </div>`).join('') : '<div class="empty-state">No files uploaded yet.</div>';
+}
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('uploadBtn');
+  const fileInput = document.getElementById('fileInput');
+  const visibility = document.getElementById('fileVisibility').value;
+  const file = fileInput.files[0];
+  if (!file) return;
+  setBusy(btn, true, 'Uploading...');
+  try {
+    const base64 = await fileToBase64(file);
+    const payload = { fileName: file.name, mimeType: file.type || 'application/octet-stream', base64Data: base64, visibility };
+    try {
+      await callApi('uploadFile', payload);
+      document.getElementById('uploadForm').reset();
+      showSuccess('File uploaded to Drive');
+      await loadData();
+    } catch (err) {
+      if (err.queued) {
+        document.getElementById('uploadForm').reset();
+        appData.files.push({ fileName: file.name, visibility, _localId: true });
+        await saveCache('appData', appData);
+        renderAll();
+        showSuccess('Offline — file stored on this device and will upload once you\'re back online.');
+      } else {
+        showSuccess('Upload error: ' + err.message);
+      }
+    }
+  } finally {
+    setBusy(btn, false);
+  }
+});
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderProfile(p) {
+  document.getElementById('profileId').textContent = p.memberId;
+  document.getElementById('profileName').textContent = p.name;
+  document.getElementById('profileEmail').textContent = p.email;
+  document.getElementById('profilePhone').textContent = p.phone;
+  document.getElementById('profileDob').textContent = p.dob || '-';
+  document.getElementById('profileAge').textContent = p.age || '-';
+  document.getElementById('profileAddress').textContent = p.address || '-';
+  document.getElementById('profileJob').textContent = p.job || '-';
+  document.getElementById('profileMaritalStatus').textContent = p.maritalStatus || '-';
+  document.getElementById('profileStatus').textContent = p.status;
+  document.getElementById('profileJoinDate').textContent = p.joinDate;
+}
+
+function updateDashboard() {
+  document.getElementById('memberCount').textContent = appData.members.length;
+  document.getElementById('pendingCount').textContent = appData.members.filter(m => m.status === 'Pending').length;
+  document.getElementById('eventCount').textContent = appData.events.length;
+  document.getElementById('announcementCount').textContent = appData.announcements.length;
+}
+
+function escapeHtml(str) {
+  return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---------------- App startup ----------------
+   Offline-first resume: if a valid, unexpired session was cached on this
+   device, go straight into the app using cached data - no network call
+   required. loadData() will still try to refresh in the background and
+   silently fall back to the cache if that fails. Either way, kick off an
+   outbox sync attempt so anything queued from a previous offline session
+   gets flushed as soon as we're connected. */
+(async function initApp() {
+  try {
+    await idbOpen();
+    const cachedSession = await loadCache('session');
+    if (cachedSession && cachedSession.token && cachedSession.expiresAt && cachedSession.expiresAt > Date.now()) {
+      startSession(cachedSession.role, cachedSession.token, cachedSession.expiresAt, cachedSession.memberId, cachedSession.name);
+      enterApp();
+    }
+  } catch (e) {
+    // IndexedDB unavailable (e.g. private browsing) - app still works,
+    // just without offline persistence.
+  }
+  updateConnectivityUI();
+  if (navigator.onLine) syncOutbox();
+})();
+
+</script>
+</body>
+</html>
