@@ -281,40 +281,39 @@ body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:linea
             <input type="password" id="regConfirmPassword" autocomplete="new-password" required>
           </div>
         </div>
-        <p class="hint" style="margin-top:-10px;margin-bottom:16px;">At least 8 characters. Next you'll verify your email address with a one-time code before your account is created.</p>
+        <p class="hint" style="margin-top:-10px;margin-bottom:16px;">At least 8 characters. Next you'll verify your email address via a link we send you, before your account is created.</p>
 
         <button type="submit" class="btn" id="registerBtn">Continue to Email Verification</button>
         <div class="error-message" id="regError"></div>
       </form>
     </div>
 
-    <!-- ---------- STEP 2: Email verification (send code) ---------- -->
+    <!-- ---------- STEP 2: Email verification (send link) ---------- -->
     <div class="reg-step-panel" id="regStep2">
       <button type="button" class="reg-step-back" id="step2BackBtn">&larr; Back to details</button>
       <div class="step2-summary" id="step2Summary"></div>
       <form id="emailStepForm">
-        <p class="hint" style="margin-bottom:16px;">We'll email a one-time code to <b id="step2EmailDisplay"></b> to confirm it's really you before your account is created.</p>
-        <button type="submit" class="btn" id="sendOtpBtn">Send Verification Code</button>
+        <p class="hint" style="margin-bottom:16px;">We'll email a verification link to <b id="step2EmailDisplay"></b>. Open it on this device to confirm it's really you before your account is created.</p>
+        <button type="submit" class="btn" id="sendOtpBtn">Send Verification Link</button>
         <div class="error-message" id="emailStepError"></div>
       </form>
     </div>
 
-    <!-- ---------- STEP 3: OTP verification ---------- -->
+    <!-- ---------- STEP 3: waiting for the emailed link to be opened ---------- -->
     <div class="reg-step-panel" id="regStep3">
       <button type="button" class="reg-step-back" id="step3BackBtn">&larr; Change email</button>
       <p class="modal-subtitle" id="otpSentToText" style="text-align:left;margin-bottom:16px;"></p>
-      <form id="otpStepForm">
-        <div class="form-group">
-          <label for="regOtp">One-Time Code (OTP)</label>
-          <input type="text" id="regOtp" class="otp-input" inputmode="numeric" maxlength="6" placeholder="------" autocomplete="one-time-code" required>
-        </div>
-        <div class="resend-row">
-          <span id="resendCountdownText">Resend available in <b id="resendSeconds">30</b>s</span>
-          <button type="button" id="resendOtpBtn" disabled>Resend OTP</button>
-        </div>
-        <button type="submit" class="btn" id="verifyOtpBtn" style="margin-top:16px;">Verify &amp; Complete Registration</button>
-        <div class="error-message" id="otpStepError"></div>
-      </form>
+      <div class="info-message" style="display:block;text-align:left;">
+        Check your inbox (and spam folder) and open the link we emailed you.
+        Opening it on this device/browser will bring you right back here and
+        finish your registration automatically - you don't need to do
+        anything else on this screen.
+      </div>
+      <div class="resend-row">
+        <span id="resendCountdownText">Resend available in <b id="resendSeconds">30</b>s</span>
+        <button type="button" id="resendOtpBtn" disabled>Resend Link</button>
+      </div>
+      <div class="error-message" id="otpStepError"></div>
     </div>
 
     <div class="generated-id-box" id="generatedIdBox">
@@ -480,6 +479,15 @@ body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:linea
   </div>
 </div>
 
+<!-- Firebase (compat build - works with the plain classic script below,
+     no bundler/module system needed). Only Auth is used, purely to send
+     and verify the registration email-link; nothing else in the app
+     talks to Firebase. -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
+
 <script>
 /* =========================================================================
    CONFIGURATION
@@ -494,24 +502,75 @@ body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:linea
    registration time and verified only on the server.
 
    Registration now requires EMAIL verification before an account is
-   ever written to the database (staff AND admin). Phone OTP has been
-   removed entirely - the mobile number is still collected (staff use
-   it to log in) but is no longer itself verified via OTP. This means
-   Code.gs needs two additional actions on top of the existing ones:
-     - sendRegistrationOtp({ email, purpose }) -> { success:true }
-         Generates + emails a fresh OTP tied to (email, purpose)
-         with its own short expiry (e.g. 5 min) and a resend cooldown.
-     - verifyRegistrationOtp({ email, otp, purpose }) -> { success:true, emailVerifyToken }
-         Checks the OTP, and on success issues a short-lived signed
-         token proving that email was verified for that purpose.
-   registerMember / registerAdmin must now also accept and validate
-   emailVerifyToken (rejecting the call if it's missing, expired, or
-   doesn't match the email/purpose) before creating the record - the
-   client can never be trusted to assert "the email was verified" on
-   its own.
+   ever written to the database (staff AND admin), and that verification
+   is now done through Firebase Authentication's email-link sign-in
+   instead of Apps Script emailing a typed OTP. Firebase doesn't have a
+   typed-code equivalent for email (that's an SMS-only feature) - it
+   works by emailing the user a link. Opening that link on this page
+   signs the user into Firebase and proves they control the address;
+   we then hand the resulting Firebase ID token to the backend.
+   Phone OTP has been removed entirely - the mobile number is still
+   collected (staff use it to log in) but is no longer itself verified.
+
+   Code.gs no longer needs sendRegistrationOtp / verifyRegistrationOtp.
+   Instead, registerMember / registerAdmin must accept an
+   emailVerifyToken that is now a Firebase ID token, and verify it
+   server-side before creating the record (Apps Script can't use the
+   Firebase Admin SDK directly, so verify it either by calling Google's
+   tokeninfo endpoint - GET https://oauth2.googleapis.com/tokeninfo?id_token=...
+   with UrlFetchApp - or by validating the JWT's signature against
+   Google's public certs, and by checking the payload's "email" and
+   "email_verified":true claims plus that "aud"/"iss" match this
+   Firebase project). The client can never be trusted to assert "the
+   email was verified" on its own.
    ========================================================================= */
 const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
 const API_KEY = 'REPLACE_WITH_SAME_KEY_AS_SCRIPT_PROPERTY';
+
+/* ---- Firebase (registration email verification only) ---- */
+const firebaseConfig = {
+  apiKey: "AIzaSyD9X6UmdhaToh5JPXvHe54xJjp8moMpxag",
+  authDomain: "society-system-2018.firebaseapp.com",
+  projectId: "society-system-2018",
+  storageBucket: "society-system-2018.firebasestorage.app",
+  messagingSenderId: "792527984954",
+  appId: "1:792527984954:web:5d196b758c350f631c9803",
+  measurementId: "G-WZNP50DF9P"
+};
+
+let fbAuth = null;
+
+// Wait for Firebase to load, then initialize
+function initFirebase() {
+  return new Promise((resolve) => {
+    function checkFirebase() {
+      if (typeof firebase !== 'undefined' && firebase.apps !== undefined) {
+        try {
+          if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+          }
+          fbAuth = firebase.auth();
+          console.log('Firebase initialized successfully');
+          resolve(true);
+        } catch (err) {
+          console.error('Firebase initialization error:', err);
+          resolve(false);
+        }
+      } else {
+        setTimeout(checkFirebase, 100);
+      }
+    }
+    checkFirebase();
+  });
+}
+
+// Initialize Firebase when script loads
+initFirebase();
+// Where the emailed link should send the user back to. Stripping any
+// query string keeps repeated verification attempts pointing at a clean
+// URL rather than chaining ?oobCode=... params from a previous visit.
+const EMAIL_LINK_RETURN_URL = window.location.origin + window.location.pathname;
+const EMAIL_FOR_SIGNIN_KEY = 'communityAppEmailForSignIn';
 
 let session = { role: null, token: null, memberId: null, name: null, expiresAt: null };
 let appData = { members: [], events: [], announcements: [], files: [] };
@@ -955,11 +1014,14 @@ document.getElementById('roleAdminBtn').addEventListener('click', () => setRegRo
 /* ---------------- Registration step navigation ----------------
    Step 1 (details, including the mobile number as a plain field) is
    collected locally only - nothing is sent to the server yet. Step 2
-   sends a one-time code to the entered email address. Step 3 verifies
-   that OTP; only once it is confirmed do we actually call
-   registerMember / registerAdmin and write the account to the
-   database. This guarantees every account (staff AND admin) is bound
-   to a verified, reachable email address before it ever gets saved.
+   emails a Firebase sign-in link to the entered address. Step 3 just
+   waits - there's nothing to submit. When the user opens that link
+   (on this same device/browser), completeEmailLinkSignIn() below runs
+   automatically on page load, obtains a Firebase ID token proving the
+   address was verified, and only then do we call registerMember /
+   registerAdmin to write the account to the database. This guarantees
+   every account (staff AND admin) is bound to a verified, reachable
+   email address before it ever gets saved.
    Phone number OTP verification has been removed - the mobile number
    is still collected (staff use it to log in) but is no longer itself
    verified. */
@@ -967,15 +1029,60 @@ let regDetails = null;       // captured at end of step 1 (includes countryCode/
 let resendTimer = null;
 let resendSecondsLeft = 0;
 
-/* ---- Email OTP (registration only) ----
-   sendRegistrationOtp({ email, purpose }) emails a fresh one-time code
-   to the address entered in step 1. verifyRegistrationOtp({ email, otp,
-   purpose }) checks it and returns a short-lived signed emailVerifyToken,
-   which is then sent to registerMember/registerAdmin. Code.gs must
-   validate that token (rejecting the call if it's missing, expired, or
-   doesn't match the email/purpose) before creating the record - the
-   client can never be trusted to assert "the email was verified" on
-   its own. Both calls need a live connection and are never queued. */
+/* ---- Firebase email-link verification (registration only) ----
+   sendEmailLink(email) asks Firebase to email a sign-in link to that
+   address. The link points back at EMAIL_LINK_RETURN_URL with a
+   short-lived oobCode Firebase attaches itself. We also stash the
+   email in localStorage under EMAIL_FOR_SIGNIN_KEY so that when the
+   link is opened on this device we know whose sign-in it is without
+   asking again (Firebase's own recommended pattern). completeEmail-
+   LinkSignIn() (called once at startup) detects that we've landed on
+   an email-link URL, signs in, and - if a matching registration draft
+   is still saved - finishes registration automatically using the
+   resulting Firebase ID token as emailVerifyToken. Sending the link
+   needs a live connection and is never queued. */
+async function sendEmailLink(email) {
+  if (!fbAuth) {
+    throw new Error('Firebase Auth is not initialized. Please refresh the page.');
+  }
+  await fbAuth.sendSignInLinkToEmail(email, { url: EMAIL_LINK_RETURN_URL, handleCodeInApp: true });
+  window.localStorage.setItem(EMAIL_FOR_SIGNIN_KEY, email);
+}
+
+async function completeEmailLinkSignIn() {
+  if (!fbAuth) return; // Firebase not ready yet
+  if (!fbAuth.isSignInWithEmailLink(window.location.href)) return;
+  let email = window.localStorage.getItem(EMAIL_FOR_SIGNIN_KEY);
+  if (!email) {
+    // Link opened in a different browser/device than it was requested
+    // from - we don't have the address cached, so ask for it.
+    email = window.prompt('Enter the email address you registered with to finish verifying it:');
+  }
+  // Clean the oobCode etc. out of the URL either way, so a refresh
+  // doesn't try to consume the same (now used) link again.
+  history.replaceState(null, '', EMAIL_LINK_RETURN_URL);
+  if (!email) return;
+  try {
+    const result = await fbAuth.signInWithEmailLink(email, window.location.href);
+    window.localStorage.removeItem(EMAIL_FOR_SIGNIN_KEY);
+    const emailVerifyToken = await result.user.getIdToken();
+    const draft = await loadCache('regDraft');
+    if (draft && draft.regDetails && draft.regDetails.email === email) {
+      regDetails = draft.regDetails;
+      openRegisterModal(true);
+      document.getElementById('otpSentToText').textContent = 'Verified! Finishing your registration...';
+      goToStep(3);
+      stopResendCountdown();
+      document.getElementById('resendCountdownText').style.display = 'none';
+      document.getElementById('resendOtpBtn').style.display = 'none';
+      await finishRegistration(emailVerifyToken);
+    } else {
+      alert('Your email address (' + email + ') is verified. Please reopen Register and re-enter your details to finish creating your account.');
+    }
+  } catch (err) {
+    alert('This verification link is invalid or has expired. Please register again and request a new link.');
+  }
+}
 
 function goToStep(n) {
   [1, 2, 3].forEach(i => {
@@ -988,19 +1095,24 @@ function goToStep(n) {
   document.getElementById('modalSubtitle').style.display = n === 1 ? '' : 'none';
 }
 
-function openRegisterModal() {
-  document.getElementById('registerForm').reset();
-  document.getElementById('emailStepForm').reset();
-  document.getElementById('otpStepForm').reset();
+function openRegisterModal(resumingFromEmailLink) {
+  registerModal.classList.add('active');
   document.getElementById('generatedIdBox').style.display = 'none';
   document.getElementById('regError').style.display = 'none';
   document.getElementById('emailStepError').style.display = 'none';
   document.getElementById('otpStepError').style.display = 'none';
+  if (resumingFromEmailLink) {
+    // Coming back in via completeEmailLinkSignIn() - regDetails/role are
+    // already populated from the saved draft, so don't wipe the forms or
+    // jump back to step 1.
+    return;
+  }
+  document.getElementById('registerForm').reset();
+  document.getElementById('emailStepForm').reset();
   regDetails = null;
   stopResendCountdown();
   setRegRole('staff');
   goToStep(1);
-  registerModal.classList.add('active');
   offerDraftResume();
 }
 
@@ -1094,36 +1206,42 @@ document.getElementById('registerForm').addEventListener('submit', (e) => {
   goToStep(2);
 });
 
-/* ---- Step 2: send OTP to the entered email address ---- */
+/* ---- Step 2: email the verification link, then wait on step 3 ---- */
 document.getElementById('emailStepForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('sendOtpBtn');
   const errorEl = document.getElementById('emailStepError');
 
-  setBusy(btn, true, 'Sending code...');
+  setBusy(btn, true, 'Sending link...');
   try {
-    await callApi('sendRegistrationOtp', { email: regDetails.email, purpose: regDetails.role + '_register' }, { allowQueue: false });
-    await idbDelete('cache', 'regDraft');
+    await sendEmailLink(regDetails.email);
+    // Save the draft so that when the link is opened (possibly after
+    // closing this tab, or even after a page reload) we know what
+    // account to finish creating. Registration details include a
+    // plaintext password at this stage the same way the offline outbox
+    // already does - both are only ever stored in this browser's own
+    // IndexedDB, never sent anywhere until the email is verified.
+    await saveCache('regDraft', { regDetails });
     document.getElementById('otpSentToText').textContent =
-      'Enter the 6-digit code sent to ' + regDetails.email + '.';
-    document.getElementById('otpStepForm').reset();
+      'A verification link was sent to ' + regDetails.email + '.';
     document.getElementById('otpStepError').style.display = 'none';
+    document.getElementById('resendCountdownText').style.display = '';
+    document.getElementById('resendOtpBtn').style.display = '';
     goToStep(3);
     startResendCountdown(30);
-    document.getElementById('regOtp').focus();
   } catch (err) {
     if (!navigator.onLine) {
       await saveCache('regDraft', { regDetails });
-      showBox(errorEl, 'You need an internet connection to receive your verification code. Your details are saved on this device — reopen Register once you\'re back online to continue.');
+      showBox(errorEl, 'You need an internet connection to receive your verification link. Your details are saved on this device — reopen Register once you\'re back online to continue.');
     } else {
-      showBox(errorEl, err.message || 'Could not send the verification code. Please try again.');
+      showBox(errorEl, err.message || 'Could not send the verification link. Please try again.');
     }
   } finally {
     setBusy(btn, false);
   }
 });
 
-/* ---- Resend OTP with a cooldown ---- */
+/* ---- Resend the link with a cooldown ---- */
 function startResendCountdown(seconds) {
   stopResendCountdown();
   resendSecondsLeft = seconds;
@@ -1152,47 +1270,28 @@ document.getElementById('resendOtpBtn').addEventListener('click', async () => {
   const errorEl = document.getElementById('otpStepError');
   btn.disabled = true;
   try {
-    await callApi('sendRegistrationOtp', { email: regDetails.email, purpose: regDetails.role + '_register' }, { allowQueue: false });
-    showBox(document.getElementById('otpStepError'), 'A new code has been sent.');
+    await sendEmailLink(regDetails.email);
+    await saveCache('regDraft', { regDetails });
+    showBox(document.getElementById('otpStepError'), 'A new link has been sent.');
     document.getElementById('otpStepError').classList.remove('error-message');
     document.getElementById('otpStepError').classList.add('info-message');
     startResendCountdown(30);
   } catch (err) {
     document.getElementById('otpStepError').classList.remove('info-message');
     document.getElementById('otpStepError').classList.add('error-message');
-    showBox(errorEl, err.message || 'Could not resend the code. Please try again.');
+    showBox(errorEl, err.message || 'Could not resend the link. Please try again.');
     btn.disabled = false;
   }
 });
 
-/* ---- Step 3: verify OTP, then finally create the account ---- */
-document.getElementById('otpStepForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('verifyOtpBtn');
+/* ---- Finish registration once Firebase has confirmed the email ----
+   Called from completeEmailLinkSignIn() after the user opens the
+   emailed link and Firebase hands back an ID token. This is the same
+   registerMember/registerAdmin call the old OTP-based step 3 used to
+   make - only where emailVerifyToken comes from is different. */
+async function finishRegistration(emailVerifyToken) {
   const errorEl = document.getElementById('otpStepError');
-  const otp = document.getElementById('regOtp').value.trim();
-  if (!/^\d{4,6}$/.test(otp)) { showBox(errorEl, 'Enter the code exactly as sent'); return; }
-
-  setBusy(btn, true, 'Verifying...');
   try {
-    // The backend confirms the code matches what it emailed for this
-    // (email, purpose) pair. On success it returns a short-lived signed
-    // emailVerifyToken proving email ownership, sent on to
-    // registerMember/registerAdmin. This check needs a live connection -
-    // it can't be queued.
-    let emailVerifyToken;
-    try {
-      const verifyRes = await callApi('verifyRegistrationOtp', { email: regDetails.email, otp, purpose: regDetails.role + '_register' }, { allowQueue: false });
-      emailVerifyToken = verifyRes.emailVerifyToken;
-    } catch (err) {
-      if (!navigator.onLine) {
-        showBox(errorEl, 'You\'re offline — reconnect and try verifying again. Your code entry has not been lost.');
-        return;
-      }
-      throw new Error(err.message || 'Incorrect code. Please try again.');
-    }
-    let pendingSync = false;
-
     if (regDetails.role === 'admin') {
       const payload = {
         name: regDetails.name, email: regDetails.email, username: regDetails.username,
@@ -1208,7 +1307,6 @@ document.getElementById('otpStepForm').addEventListener('submit', async (e) => {
         document.getElementById('generatedIdHint').textContent = 'Your administrator account is active. You can log in now with your username and password.';
       } catch (err) {
         if (!err.queued) throw err;
-        pendingSync = true;
         document.getElementById('generatedIdLabel').textContent = 'Registration Saved on This Device';
         document.getElementById('generatedIdValue').textContent = '⏳ Pending Sync';
         document.getElementById('generatedIdHint').textContent = 'Your email was verified, but you\'re offline right now. This will be submitted automatically the moment you\'re back online.';
@@ -1228,7 +1326,6 @@ document.getElementById('otpStepForm').addEventListener('submit', async (e) => {
         document.getElementById('generatedIdHint').innerHTML = 'Your registration is <b>pending admin approval</b>. Once approved, come back and log in with your mobile number and password — we\'ll then email you a one-time code.';
       } catch (err) {
         if (!err.queued) throw err;
-        pendingSync = true;
         document.getElementById('generatedIdLabel').textContent = 'Registration Saved on This Device';
         document.getElementById('generatedIdValue').textContent = '⏳ Pending Sync';
         document.getElementById('generatedIdHint').textContent = 'Your email was verified, but you\'re offline right now. This will be submitted automatically the moment you\'re back online, and you\'ll get your Member ID then.';
@@ -1241,11 +1338,16 @@ document.getElementById('otpStepForm').addEventListener('submit', async (e) => {
     document.getElementById('generatedIdBox').style.display = 'block';
     updateConnectivityUI();
   } catch (err) {
-    showBox(errorEl, err.message);
-  } finally {
-    setBusy(btn, false);
+    // Account creation itself failed (e.g. master key rejected, email
+    // already registered) even though the email was successfully
+    // verified. Send the user back to step 1 so they can see the error
+    // and fix + resubmit; the verified token can't be reused since a
+    // fresh emailVerifyToken will be issued next time they verify.
+    goToStep(1);
+    document.getElementById('regSteps').style.display = '';
+    showBox(document.getElementById('regError'), err.message || 'Could not complete registration. Please try again.');
   }
-});
+}
 
 /* ---------------- Enter / exit app ---------------- */
 function enterApp() {
@@ -1622,6 +1724,21 @@ function escapeHtml(str) {
    outbox sync attempt so anything queued from a previous offline session
    gets flushed as soon as we're connected. */
 (async function initApp() {
+  // Wait for Firebase to initialize first
+  await new Promise(resolve => {
+    const checkFirebaseReady = setInterval(() => {
+      if (fbAuth) {
+        clearInterval(checkFirebaseReady);
+        resolve();
+      }
+    }, 100);
+    // Safety timeout - don't wait forever
+    setTimeout(() => {
+      clearInterval(checkFirebaseReady);
+      resolve();
+    }, 5000);
+  });
+
   try {
     await idbOpen();
     const cachedSession = await loadCache('session');
@@ -1635,6 +1752,11 @@ function escapeHtml(str) {
   }
   updateConnectivityUI();
   if (navigator.onLine) syncOutbox();
+  // If this page load is the user landing back here after clicking their
+  // registration verification link, finish signing them in and complete
+  // the registration - this needs IndexedDB (for the saved draft) to
+  // already be open, so it runs after the block above.
+  completeEmailLinkSignIn();
 })();
 
 </script>
